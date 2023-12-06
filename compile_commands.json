@@ -1,0 +1,87 @@
+[
+  {
+    "arguments": [
+      "/usr/bin/c++",
+      "-c",
+      "-Wall",
+      "-Wextra",
+      "-pedantic",
+      "-ggdb",
+      "-std=c++20",
+      "-o",
+      "toyc",
+      "src/compiler/compiler.cpp"
+    ],
+    "directory": "/home/notflawffles/Programming/toy",
+    "file": "/home/notflawffles/Programming/toy/src/compiler/compiler.cpp",
+    "output": "/home/notflawffles/Programming/toy/toyc"
+  },
+  {
+    "arguments": [
+      "/usr/bin/c++",
+      "-c",
+      "-Wall",
+      "-Wextra",
+      "-pedantic",
+      "-ggdb",
+      "-std=c++20",
+      "-o",
+      "toyc",
+      "src/diagnostic/diagnostic.cpp"
+    ],
+    "directory": "/home/notflawffles/Programming/toy",
+    "file": "/home/notflawffles/Programming/toy/src/diagnostic/diagnostic.cpp",
+    "output": "/home/notflawffles/Programming/toy/toyc"
+  },
+  {
+    "arguments": [
+      "/usr/bin/c++",
+      "-c",
+      "-Wall",
+      "-Wextra",
+      "-pedantic",
+      "-ggdb",
+      "-std=c++20",
+      "-o",
+      "toyc",
+      "src/utils/span.cpp"
+    ],
+    "directory": "/home/notflawffles/Programming/toy",
+    "file": "/home/notflawffles/Programming/toy/src/utils/span.cpp",
+    "output": "/home/notflawffles/Programming/toy/toyc"
+  },
+  {
+    "arguments": [
+      "/usr/bin/c++",
+      "-c",
+      "-Wall",
+      "-Wextra",
+      "-pedantic",
+      "-ggdb",
+      "-std=c++20",
+      "-o",
+      "toyc",
+      "src/utils/utility.cpp"
+    ],
+    "directory": "/home/notflawffles/Programming/toy",
+    "file": "/home/notflawffles/Programming/toy/src/utils/utility.cpp",
+    "output": "/home/notflawffles/Programming/toy/toyc"
+  },
+  {
+    "arguments": [
+      "/usr/bin/c++",
+      "-c",
+      "-Wall",
+      "-Wextra",
+      "-pedantic",
+      "-ggdb",
+      "-std=c++20",
+      "-o",
+      "toyc",
+      "src/main.cpp"
+    ],
+    "directory": "/home/notflawffles/Programming/toy",
+    "file": "/home/notflawffles/Programming/toy/src/main.cpp",
+    "output": "/home/notflawffles/Programming/toy/toyc"
+  }
+]
