@@ -1,5 +1,7 @@
 #include "../../../include/text/parser/parser.hpp"
+#include "../../../include/utils/utility.hpp"
 #include <algorithm>
+#include <iostream>
 
 using enum TokenKind;
 
@@ -15,15 +17,14 @@ bool is_keyword(std::string identifier) {
 
 Parser::Parser(Lexer lexer) {
     this->lexer = lexer;
+    current = this->lexer.next();
 }
 
 AstResult Parser::parse(void) {
     std::vector<Ast> tree;
 
     while (true) {
-	current = this->lexer.next();
-
-	if (std::get<Token>(current).kind == TokenKind::EndOfFile) {
+	if (std::get_if<Token>(&current)->kind == TokenKind::EndOfFile) {
 	    break;
 	}
 
@@ -47,6 +48,7 @@ AstResult Parser::parse(void) {
 }
 
 AstResult Parser::parse_next(void) {
+    requires_semi_colon = true;
     AstResult result = Ast();
 
     switch (std::get<Token>(current).kind) {
@@ -65,14 +67,36 @@ AstResult Parser::parse_next(void) {
 	    result = parse_name();
 	    break;
 
+	case TokenKind::SemiColon:
+	    break;
+
 	default:
+	    std::cerr << std::get<Token>(current).value << std::endl;
+
+	    diagnostics.push_back(
+		Diagnostic(
+		    DiagnosticKind::SyntaxError,
+		    lexer.span,
+		    "expected statement"
+		)
+	    );
+
+	    current = lexer.next();
 	    break;
     }
 
-   auto advance = eat({SemiColon});
+    if (std::get_if<Diagnostic>(&result)) {
+	diagnostics.push_back(std::get<Diagnostic>(result));
+	eat({std::get<Token>(current).kind});
+    }
 
-    if (std::get_if<Diagnostic>(&advance)) {
-	diagnostics.push_back(std::get<Diagnostic>(advance));
+    if (requires_semi_colon) {
+	auto advance = eat({SemiColon});
+	requires_semi_colon = true;
+
+	if (std::get_if<Diagnostic>(&advance)) {
+	    diagnostics.push_back(std::get<Diagnostic>(advance));
+	}
     }
 
     return result;
@@ -88,7 +112,9 @@ AstResult Parser::parse_name(void) {
 
 AstResult Parser::parse_statement(void) {
     if (std::get<Token>(current).value == "let") {
-	return parse_declaration();
+	return parse_variable_declaration();
+    } else if (std::get<Token>(current).value == "func") {
+	return parse_function_declaration();
     }
 
     return Diagnostic(
@@ -98,17 +124,134 @@ AstResult Parser::parse_statement(void) {
     );
 }
 
-AstResult Parser::parse_declaration(void) {
+AstResult Parser::parse_variable_declaration(void) {
+    Span span = lexer.span;
     auto advance = eat({Identifier});
 
     if (std::get_if<Diagnostic>(&advance)) {
 	return std::get<Diagnostic>(advance);
     }
-    
-    return Diagnostic(
-	DiagnosticKind::SyntaxError,
-	lexer.span,
-	"yet not implemented"
+
+    auto name = eat({Identifier});
+
+    if (std::get_if<Diagnostic>(&name)) {
+	return std::get<Diagnostic>(name);
+    }
+
+    advance = eat({Colon});
+
+    if (std::get_if<Diagnostic>(&advance)) {
+	return std::get<Diagnostic>(advance);
+    }
+
+    auto kind = eat({Identifier});
+
+    if (std::get_if<Diagnostic>(&kind)) {
+	return std::get<Diagnostic>(kind);
+    }
+
+    advance = eat({Assign});
+
+    if (std::get_if<Diagnostic>(&advance)) {
+	return std::get<Diagnostic>(advance);
+    }
+
+    auto value = parse_assignment();
+
+    if (std::get_if<Diagnostic>(&value)) {
+	return std::get<Diagnostic>(value);
+    }
+
+    return Ast(
+	Name(
+	    NameKind::Variable,
+	    std::get<Token>(name).value,
+	    std::get<Token>(kind).value,
+	    std::get<Expression>(value)
+	),
+
+	span
+    );
+}
+
+AstResult Parser::parse_function_declaration(void) {
+    Span span = lexer.span;
+    auto advance = eat({Identifier});
+
+    if (std::get_if<Diagnostic>(&advance)) {
+	return std::get<Diagnostic>(advance);
+    }
+
+    auto name = eat({Identifier});
+
+    if (std::get_if<Diagnostic>(&name)) {
+	return std::get<Diagnostic>(name);
+    }
+
+    advance = eat({LeftParenthesis});
+
+    if (std::get_if<Diagnostic>(&advance)) {
+	return std::get<Diagnostic>(advance);
+    }
+
+    std::vector<FunctionArgument> arguments;
+
+    while (std::get_if<Token>(&current)->kind != RightParenthesis) {
+	auto argument_name = eat({Identifier});
+	advance = eat({Colon});
+
+	if (std::get_if<Diagnostic>(&advance)) {
+	    return std::get<Diagnostic>(advance);
+	}
+
+	auto argument_kind = eat({Identifier});
+
+	if (std::get_if<Diagnostic>(&argument_kind)) {
+	    return std::get<Diagnostic>(argument_kind);
+	}
+
+	if (std::get_if<Token>(&current)->kind != RightParenthesis) {
+	    advance = eat({Comma});
+
+	    if (std::get_if<Diagnostic>(&advance)) {
+		return std::get<Diagnostic>(advance);
+	    }
+	}
+    }
+
+    advance = eat({RightParenthesis});
+
+    if (std::get_if<Diagnostic>(&advance)) {
+	return std::get<Diagnostic>(advance);
+    }
+
+    advance = eat({MinusGreater});
+
+    if (std::get_if<Diagnostic>(&advance)) {
+	return std::get<Diagnostic>(advance);
+    }
+
+    auto kind = eat({Identifier});
+
+    if (std::get_if<Diagnostic>(&kind)) {
+	return std::get<Diagnostic>(kind);
+    }
+
+    auto body = parse_block();
+
+    if (std::get_if<Diagnostic>(&body)) {
+	return std::get<Diagnostic>(body);
+    }
+
+    return Ast(
+	Name(
+	    NameKind::Function,
+	    std::get<Token>(name).value,
+	    std::get<Token>(kind).value,
+	    std::get<Ast>(body)
+	),
+
+	span
     );
 }
 
@@ -130,7 +273,15 @@ AstResult Parser::parse_block(void) {
 
 	block.push_back(std::get<Ast>(next));
     }
+
+    advance = eat({RightCurlyBrace});
+
+    if (std::get_if<Diagnostic>(&advance)) {
+	return std::get<Diagnostic>(advance);
+    }
     
+    requires_semi_colon = false;
+
     return Ast(
 	block,
 	span
@@ -686,14 +837,12 @@ ExpressionResult Parser::parse_literal(void) {
 	}
 
 	default:
-	    break;
+	    return Diagnostic(
+		DiagnosticKind::SyntaxError,
+		lexer.span,
+		"expected expression"
+	    );
     }
-
-    return Diagnostic(
-	DiagnosticKind::SyntaxError,
-	lexer.span,
-	"expected expression"
-    );
 }
 
 TokenResult Parser::eat(std::vector<TokenKind> kinds) {
@@ -716,10 +865,16 @@ TokenResult Parser::eat(std::vector<TokenKind> kinds) {
     }
 
     message.push_back('\n');
+    Span span = lexer.span;
+
+    if (std::get_if<Token>(&current)->kind == EndOfFile) {
+	span.row--;
+	span.column = get_line(span.stream, span.row).length();
+    }
 
     return Diagnostic(
 	DiagnosticKind::SyntaxError,
-	lexer.span,
+	span,
 	message
     );
 }

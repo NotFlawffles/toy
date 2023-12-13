@@ -1,1 +1,3 @@
-let hello
+func add(a: int) -> int {
+
+}

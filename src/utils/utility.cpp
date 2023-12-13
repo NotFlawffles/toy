@@ -43,3 +43,23 @@ FileResult read_file(std::string path) {
 
     return content;
 }
+
+std::string get_line(std::string path, size_t line) {
+    std::ifstream file(path);
+    std::string target;
+    size_t current_line = 1;
+
+    while (file.good()) {
+	char current = file.get();
+
+	if (current == '\n') {
+	    current_line++;
+	}
+
+	if (current_line == line) {
+	    target.push_back(current);
+	}
+    }
+
+    return target;
+}

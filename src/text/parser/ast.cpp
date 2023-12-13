@@ -12,4 +12,10 @@ Ast::Ast(Expression expression, Span span) {
     value = expression;
 }
 
+Ast::Ast(Name name, Span span) {
+    this->kind = AstKind::VariableDeclaration;
+    this->span = span;
+    value = name;
+}
+
 Ast::Ast(void) {}
