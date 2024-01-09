@@ -28,6 +28,7 @@ class Parser {
     AstResult parse_function_declaration(void);
     AstResult parse_block(void);
     AstResult parse_expression(void);
+    ExpressionResult parse_list(void);
     ExpressionResult parse_assignment(void);
     ExpressionResult parse_logical_or(void);
     ExpressionResult parse_logical_and(void);
@@ -40,6 +41,8 @@ class Parser {
     ExpressionResult parse_additive(void);
     ExpressionResult parse_multiplicative(void);
     ExpressionResult parse_unary(void);
+    ExpressionResult parse_postfix(void);
     ExpressionResult parse_literal(void);
+    ExpressionResult parse_function_call(ExpressionResult literal);
     TokenResult eat(std::vector<TokenKind>);
 };

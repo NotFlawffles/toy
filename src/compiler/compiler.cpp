@@ -5,11 +5,7 @@
 
 CompilationResult compile(std::string path) {
     auto source = read_file(path);
-
-    if (std::get_if<Diagnostic>(&source)) {
-	return std::get<Diagnostic>(source);
-    }
-
+    audhandle(source);
     auto lexer = Lexer(path, std::get<std::string>(source));
     auto parser = Parser(lexer);
     auto tree = parser.parse();

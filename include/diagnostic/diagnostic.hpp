@@ -2,6 +2,8 @@
 
 #include "../utils/span.hpp"
 
+#define audhandle(which) if (std::get_if<Diagnostic>(&which)) { return std::get<Diagnostic>(which); }
+
 enum class DiagnosticKind {
     FileNotFound,
     FileNotRegular,

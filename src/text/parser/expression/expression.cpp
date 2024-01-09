@@ -17,3 +17,5 @@ Expression::Expression(Literal literal) {
     this->kind = ExpressionKind::Literal;
     this->literal = literal;
 }
+
+Expression::Expression(void) {}

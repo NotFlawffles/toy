@@ -2,8 +2,9 @@
 
 #include <variant>
 #include <string>
+#include "call.hpp"
 
-using LiteralValue = std::variant<long long, double, char, std::string, bool>;
+using LiteralValue = std::variant<long long, double, char, std::string, bool, Call>;
 
 enum class LiteralKind {
     Integer,
@@ -11,7 +12,8 @@ enum class LiteralKind {
     Char,
     String,
     Name,
-    Boolean
+    Boolean,
+    Call
 };
 
 class Literal {

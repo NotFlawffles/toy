@@ -110,11 +110,11 @@ TokenResult Lexer::next(void) {
 	    );
 
 	case ',':
-	    return Token(
+	    return advance_with_token(Token(
 		TokenKind::Comma,
 		span,
 		","
-	    );
+	    ));
 
 	case ':':
 	    return advance_with_token(

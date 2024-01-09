@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <iostream>
 
+#define loop while (true)
+
 using enum TokenKind;
 
 bool is_keyword(std::string identifier) {
@@ -23,8 +25,10 @@ Parser::Parser(Lexer lexer) {
 AstResult Parser::parse(void) {
     std::vector<Ast> tree;
 
-    while (true) {
-	if (std::get_if<Token>(&current)->kind == TokenKind::EndOfFile) {
+    loop {
+	audhandle(current);
+
+	if (std::get<Token>(current).kind == EndOfFile) {
 	    break;
 	}
 
@@ -71,7 +75,7 @@ AstResult Parser::parse_next(void) {
 	    break;
 
 	default:
-	    std::cerr << std::get<Token>(current).value << std::endl;
+	    std::cerr << "unhandled sequence: '" << std::get<Token>(current).value << "'" << std::endl;
 
 	    diagnostics.push_back(
 		Diagnostic(
@@ -125,42 +129,19 @@ AstResult Parser::parse_statement(void) {
 }
 
 AstResult Parser::parse_variable_declaration(void) {
-    Span span = lexer.span;
+    auto span = lexer.span;
     auto advance = eat({Identifier});
-
-    if (std::get_if<Diagnostic>(&advance)) {
-	return std::get<Diagnostic>(advance);
-    }
-
+    audhandle(advance);
     auto name = eat({Identifier});
-
-    if (std::get_if<Diagnostic>(&name)) {
-	return std::get<Diagnostic>(name);
-    }
-
+    audhandle(name);
     advance = eat({Colon});
-
-    if (std::get_if<Diagnostic>(&advance)) {
-	return std::get<Diagnostic>(advance);
-    }
-
+    audhandle(advance);
     auto kind = eat({Identifier});
-
-    if (std::get_if<Diagnostic>(&kind)) {
-	return std::get<Diagnostic>(kind);
-    }
-
+    audhandle(kind);
     advance = eat({Assign});
-
-    if (std::get_if<Diagnostic>(&advance)) {
-	return std::get<Diagnostic>(advance);
-    }
-
-    auto value = parse_assignment();
-
-    if (std::get_if<Diagnostic>(&value)) {
-	return std::get<Diagnostic>(value);
-    }
+    audhandle(advance);
+    auto value = parse_list();
+    audhandle(value);
 
     return Ast(
 	Name(
@@ -175,73 +156,41 @@ AstResult Parser::parse_variable_declaration(void) {
 }
 
 AstResult Parser::parse_function_declaration(void) {
-    Span span = lexer.span;
+    auto span = lexer.span;
     auto advance = eat({Identifier});
-
-    if (std::get_if<Diagnostic>(&advance)) {
-	return std::get<Diagnostic>(advance);
-    }
-
+    audhandle(advance);
     auto name = eat({Identifier});
-
-    if (std::get_if<Diagnostic>(&name)) {
-	return std::get<Diagnostic>(name);
-    }
-
+    audhandle(name);
     advance = eat({LeftParenthesis});
-
-    if (std::get_if<Diagnostic>(&advance)) {
-	return std::get<Diagnostic>(advance);
-    }
-
+    audhandle(advance);
     std::vector<FunctionArgument> arguments;
 
-    while (std::get_if<Token>(&current)->kind != RightParenthesis) {
+    loop {
+	audhandle(current);
+
+	if (std::get<Token>(current).kind == RightParenthesis) {
+	    break;
+	}
+
 	auto argument_name = eat({Identifier});
 	advance = eat({Colon});
-
-	if (std::get_if<Diagnostic>(&advance)) {
-	    return std::get<Diagnostic>(advance);
-	}
-
+	audhandle(advance);
 	auto argument_kind = eat({Identifier});
-
-	if (std::get_if<Diagnostic>(&argument_kind)) {
-	    return std::get<Diagnostic>(argument_kind);
-	}
+	audhandle(argument_kind);
 
 	if (std::get_if<Token>(&current)->kind != RightParenthesis) {
 	    advance = eat({Comma});
-
-	    if (std::get_if<Diagnostic>(&advance)) {
-		return std::get<Diagnostic>(advance);
-	    }
 	}
     }
 
     advance = eat({RightParenthesis});
-
-    if (std::get_if<Diagnostic>(&advance)) {
-	return std::get<Diagnostic>(advance);
-    }
-
+    audhandle(advance);
     advance = eat({MinusGreater});
-
-    if (std::get_if<Diagnostic>(&advance)) {
-	return std::get<Diagnostic>(advance);
-    }
-
+    audhandle(advance);
     auto kind = eat({Identifier});
-
-    if (std::get_if<Diagnostic>(&kind)) {
-	return std::get<Diagnostic>(kind);
-    }
-
+    audhandle(kind);
     auto body = parse_block();
-
-    if (std::get_if<Diagnostic>(&body)) {
-	return std::get<Diagnostic>(body);
-    }
+    audhandle(body);
 
     return Ast(
 	Name(
@@ -256,30 +205,19 @@ AstResult Parser::parse_function_declaration(void) {
 }
 
 AstResult Parser::parse_block(void) {
-    Span span = lexer.span;
+    auto span = lexer.span;
     std::vector<Ast> block;
     auto advance = eat({LeftCurlyBrace});
-
-    if (std::get_if<Diagnostic>(&advance)) {
-	return std::get<Diagnostic>(advance);
-    }
+    audhandle(advance);
     
     while (std::get_if<Token>(&current)->kind != RightCurlyBrace) {
 	AstResult next = parse_next();
-
-	if (std::get_if<Diagnostic>(&next)) {
-	    return std::get<Diagnostic>(next);
-	}
-
+	audhandle(next);
 	block.push_back(std::get<Ast>(next));
     }
 
     advance = eat({RightCurlyBrace});
-
-    if (std::get_if<Diagnostic>(&advance)) {
-	return std::get<Diagnostic>(advance);
-    }
-    
+    audhandle(advance);
     requires_semi_colon = false;
 
     return Ast(
@@ -289,24 +227,44 @@ AstResult Parser::parse_block(void) {
 }
 
 AstResult Parser::parse_expression(void) {
-    auto expression = parse_assignment();
+    auto expression = parse_list();
+    audhandle(expression);
 
-    if (std::get_if<Diagnostic>(&expression)) {
-	return std::get<Diagnostic>(expression);
-    } else {
-	return Ast(
-	    std::get<Expression>(expression),
-	    lexer.span
+    return Ast(
+	std::get<Expression>(expression),
+	lexer.span
+    );
+}
+
+ExpressionResult Parser::parse_list(void) {
+    auto left = parse_assignment();
+
+    audhandle(left);
+
+    std::vector<TokenKind> requirements = {
+	Comma
+    };
+
+    if (std::find(requirements.begin(), requirements.end(), std::get<Token>(current).kind) != requirements.end()) {
+	Token op = std::get<Token>(current);
+	auto advance = eat({op.kind});
+	audhandle(advance);
+	auto right = parse_list();
+	audhandle(right);
+
+	left = Expression(
+	    std::get<Expression>(left),
+	    op,
+	    std::get<Expression>(right)
 	);
     }
+
+    return left;
 }
 
 ExpressionResult Parser::parse_assignment(void) {
     auto left = parse_logical_or();
-
-    if (std::get_if<Diagnostic>(&left)) {
-	return std::get<Diagnostic>(left);
-    }
+    audhandle(left);
 
     std::vector<TokenKind> requirements = {
 	Assign,
@@ -325,16 +283,9 @@ ExpressionResult Parser::parse_assignment(void) {
     if (std::find(requirements.begin(), requirements.end(), std::get<Token>(current).kind) != requirements.end()) {
 	Token op = std::get<Token>(current);
 	auto advance = eat({op.kind});
-
-	if (std::get_if<Diagnostic>(&advance)) {
-	    return std::get<Diagnostic>(advance);
-	}
-
-	auto right = parse_assignment();
-
-	if (std::get_if<Diagnostic>(&right)) {
-	    return std::get<Diagnostic>(right);
-	}
+	audhandle(advance);
+	auto right = parse_list();
+	audhandle(right);
 
 	left = Expression(
 	    std::get<Expression>(left),
@@ -349,9 +300,7 @@ ExpressionResult Parser::parse_assignment(void) {
 ExpressionResult Parser::parse_logical_or(void) {
     auto left = parse_logical_and();
 
-    if (std::get_if<Diagnostic>(&left)) {
-	return std::get<Diagnostic>(left);
-    }
+    audhandle(left);
 
     std::vector<TokenKind> requirements = {
 	PipePipe
@@ -360,16 +309,9 @@ ExpressionResult Parser::parse_logical_or(void) {
     if (std::find(requirements.begin(), requirements.end(), std::get<Token>(current).kind) != requirements.end()) {
 	Token op = std::get<Token>(current);
 	auto advance = eat({op.kind});
-	
-	if (std::get_if<Diagnostic>(&advance)) {
-	    return std::get<Diagnostic>(advance);
-	}
-
-	auto right = parse_assignment();
-
-	if (std::get_if<Diagnostic>(&right)) {
-	    return std::get<Diagnostic>(right);
-	}
+	audhandle(advance);
+	auto right = parse_list();
+	audhandle(right);
 
 	left = Expression(
 	    std::get<Expression>(left),
@@ -384,9 +326,7 @@ ExpressionResult Parser::parse_logical_or(void) {
 ExpressionResult Parser::parse_logical_and(void) {
     auto left = parse_bitwise_or();
 
-    if (std::get_if<Diagnostic>(&left)) {
-	return std::get<Diagnostic>(left);
-    }
+    audhandle(left);
 
     std::vector<TokenKind> requirements = {
 	AmpersandAmpersand
@@ -395,16 +335,9 @@ ExpressionResult Parser::parse_logical_and(void) {
     if (std::find(requirements.begin(), requirements.end(), std::get<Token>(current).kind) != requirements.end()) {
 	Token op = std::get<Token>(current);
 	auto advance = eat({op.kind});
-
-	if (std::get_if<Diagnostic>(&advance)) {
-	    return std::get<Diagnostic>(advance);
-	}
-
-	auto right = parse_assignment();
-
-	if (std::get_if<Diagnostic>(&right)) {
-	    return std::get<Diagnostic>(right);
-	}
+	audhandle(advance);
+	auto right = parse_list();
+	audhandle(right);
 
 	left = Expression(
 	    std::get<Expression>(left),
@@ -419,9 +352,7 @@ ExpressionResult Parser::parse_logical_and(void) {
 ExpressionResult Parser::parse_bitwise_or(void) {
     auto left = parse_bitwise_xor();
 
-    if (std::get_if<Diagnostic>(&left)) {
-	return std::get<Diagnostic>(left);
-    }
+    audhandle(left);
 
     std::vector<TokenKind> requirements = {
 	Pipe
@@ -430,16 +361,9 @@ ExpressionResult Parser::parse_bitwise_or(void) {
     if (std::find(requirements.begin(), requirements.end(), std::get<Token>(current).kind) != requirements.end()) {
 	Token op = std::get<Token>(current);
 	auto advance = eat({op.kind});
-
-	if (std::get_if<Diagnostic>(&advance)) {
-	    return std::get<Diagnostic>(advance);
-	}
-
-	auto right = parse_assignment();
-
-	if (std::get_if<Diagnostic>(&right)) {
-	    return std::get<Diagnostic>(right);
-	}
+	audhandle(advance);
+	auto right = parse_list();
+	audhandle(right);
 
 	left = Expression(
 	    std::get<Expression>(left),
@@ -454,9 +378,7 @@ ExpressionResult Parser::parse_bitwise_or(void) {
 ExpressionResult Parser::parse_bitwise_xor(void) {
     auto left = parse_bitwise_and();
 
-    if (std::get_if<Diagnostic>(&left)) {
-	return std::get<Diagnostic>(left);
-    }
+    audhandle(left);
 
     std::vector<TokenKind> requirements = {
 	Caret
@@ -464,17 +386,10 @@ ExpressionResult Parser::parse_bitwise_xor(void) {
 
     if (std::find(requirements.begin(), requirements.end(), std::get<Token>(current).kind) != requirements.end()) {
 	Token op = std::get<Token>(current);
-	auto advance= eat({op.kind});
-
-	if (std::get_if<Diagnostic>(&advance)) {
-	    return std::get<Diagnostic>(advance);
-	}
-
-	auto right = parse_assignment();
-
-	if (std::get_if<Diagnostic>(&right)) {
-	    return std::get<Diagnostic>(right);
-	}
+	auto advance = eat({op.kind});
+	audhandle(advance);
+	auto right = parse_list();
+	audhandle(right);
 
 	left = Expression(
 	    std::get<Expression>(left),
@@ -489,9 +404,7 @@ ExpressionResult Parser::parse_bitwise_xor(void) {
 ExpressionResult Parser::parse_bitwise_and(void) {
     auto left = parse_equality();
 
-    if (std::get_if<Diagnostic>(&left)) {
-	return std::get<Diagnostic>(left);
-    }
+    audhandle(left);
 
     std::vector<TokenKind> requirements = {
 	Ampersand
@@ -500,16 +413,9 @@ ExpressionResult Parser::parse_bitwise_and(void) {
     if (std::find(requirements.begin(), requirements.end(), std::get<Token>(current).kind) != requirements.end()) {
 	Token op = std::get<Token>(current);
 	auto advance = eat({op.kind});
-
-	if (std::get_if<Diagnostic>(&advance)) {
-	    return std::get<Diagnostic>(advance);
-	}
-
-	auto right = parse_assignment();
-
-	if (std::get_if<Diagnostic>(&right)) {
-	    return std::get<Diagnostic>(right);
-	}
+	audhandle(advance);
+	auto right = parse_list();
+	audhandle(right);
 
 	left = Expression(
 	    std::get<Expression>(left),
@@ -524,9 +430,7 @@ ExpressionResult Parser::parse_bitwise_and(void) {
 ExpressionResult Parser::parse_equality(void) {
     auto left = parse_relational();
 
-    if (std::get_if<Diagnostic>(&left)) {
-	return std::get<Diagnostic>(left);
-    }
+    audhandle(left);
 
     std::vector<TokenKind> requirements = {
 	Assign,
@@ -536,16 +440,9 @@ ExpressionResult Parser::parse_equality(void) {
     if (std::find(requirements.begin(), requirements.end(), std::get<Token>(current).kind) != requirements.end()) {
 	Token op = std::get<Token>(current);
 	auto advance = eat({op.kind});
-
-	if (std::get_if<Diagnostic>(&advance)) {
-	    return std::get<Diagnostic>(advance);
-	}
-
-	auto right = parse_assignment();
-
-	if (std::get_if<Diagnostic>(&right)) {
-	    return std::get<Diagnostic>(right);
-	}
+	audhandle(advance);
+	auto right = parse_list();
+	audhandle(right);
 
 	left = Expression(
 	    std::get<Expression>(left),
@@ -560,9 +457,7 @@ ExpressionResult Parser::parse_equality(void) {
 ExpressionResult Parser::parse_relational(void) {
     auto left = parse_shift();
 
-    if (std::get_if<Diagnostic>(&left)) {
-	return std::get<Diagnostic>(left);
-    }
+    audhandle(left);
 
     std::vector<TokenKind> requirements = {
 	Greater,
@@ -574,16 +469,9 @@ ExpressionResult Parser::parse_relational(void) {
     if (std::find(requirements.begin(), requirements.end(), std::get<Token>(current).kind) != requirements.end()) {
 	Token op = std::get<Token>(current);
 	auto advance = eat({op.kind});
-
-	if (std::get_if<Diagnostic>(&advance)) {
-	    return std::get<Diagnostic>(advance);
-	}
-
-	auto right = parse_assignment();
-
-	if (std::get_if<Diagnostic>(&right)) {
-	    return std::get<Diagnostic>(right);
-	}
+	audhandle(advance);
+	auto right = parse_list();
+	audhandle(right);
 
 	left = Expression(
 	    std::get<Expression>(left),
@@ -598,9 +486,7 @@ ExpressionResult Parser::parse_relational(void) {
 ExpressionResult Parser::parse_shift(void) {
     auto left = parse_additive();
 
-    if (std::get_if<Diagnostic>(&left)) {
-	return std::get<Diagnostic>(left);
-    }
+    audhandle(left);
 
     std::vector<TokenKind> requirements = {
 	GreaterGreater,
@@ -610,16 +496,9 @@ ExpressionResult Parser::parse_shift(void) {
     if (std::find(requirements.begin(), requirements.end(), std::get<Token>(current).kind) != requirements.end()) {
 	Token op = std::get<Token>(current);
 	auto advance = eat({op.kind});
-
-	if (std::get_if<Diagnostic>(&advance)) {
-	    return std::get<Diagnostic>(advance);
-	}
-
-	auto right = parse_assignment();
-
-	if (std::get_if<Diagnostic>(&right)) {
-	    return std::get<Diagnostic>(right);
-	}
+	audhandle(advance);
+	auto right = parse_list();
+	audhandle(right);
 
 	left = Expression(
 	    std::get<Expression>(left),
@@ -634,9 +513,7 @@ ExpressionResult Parser::parse_shift(void) {
 ExpressionResult Parser::parse_additive(void) {
     auto left = parse_multiplicative();
 
-    if (std::get_if<Diagnostic>(&left)) {
-	return std::get<Diagnostic>(left);
-    }
+    audhandle(left);
 
     std::vector<TokenKind> requirements = {
 	Plus,
@@ -646,16 +523,9 @@ ExpressionResult Parser::parse_additive(void) {
     if (std::find(requirements.begin(), requirements.end(), std::get<Token>(current).kind) != requirements.end()) {
 	Token op = std::get<Token>(current);
 	auto advance = eat({op.kind});
-
-	if (std::get_if<Diagnostic>(&advance)) {
-	    return std::get<Diagnostic>(advance);
-	}
-
-	auto right = parse_assignment();
-
-	if (std::get_if<Diagnostic>(&right)) {
-	    return std::get<Diagnostic>(right);
-	}
+	audhandle(advance);
+	auto right = parse_list();
+	audhandle(right);
 
 	left = Expression(
 	    std::get<Expression>(left),
@@ -669,10 +539,7 @@ ExpressionResult Parser::parse_additive(void) {
 
 ExpressionResult Parser::parse_multiplicative(void) {
     auto left = parse_unary();
-
-    if (std::get_if<Diagnostic>(&left)) {
-	return std::get<Diagnostic>(left);
-    }
+    audhandle(left);
 
     std::vector<TokenKind> requirements = {
 	Asterisk,
@@ -682,16 +549,9 @@ ExpressionResult Parser::parse_multiplicative(void) {
     if (std::find(requirements.begin(), requirements.end(), std::get<Token>(current).kind) != requirements.end()) {
 	Token op = std::get<Token>(current);
 	auto advance = eat({op.kind});
-
-	if (std::get_if<Diagnostic>(&advance)) {
-	    return std::get<Diagnostic>(advance);
-	}
-
-	auto right = parse_assignment();
-
-	if (std::get_if<Diagnostic>(&left)) {
-	    return std::get<Diagnostic>(left);
-	}
+	audhandle(advance);
+	auto right = parse_list();
+	audhandle(right);
 
 	left = Expression(
 	    std::get<Expression>(left),
@@ -704,7 +564,7 @@ ExpressionResult Parser::parse_multiplicative(void) {
 }
 
 ExpressionResult Parser::parse_unary(void) {
-    Token op = std::get<Token>(current);
+    auto op = std::get<Token>(current);
 
     std::vector<TokenKind> requirements = {
 	Plus,
@@ -713,22 +573,26 @@ ExpressionResult Parser::parse_unary(void) {
 
     if (std::find(requirements.begin(), requirements.end(), op.kind) != requirements.end()) {
 	auto advance = 	eat({op.kind});
-
-	if (std::get_if<Diagnostic>(&advance)) {
-	    return std::get<Diagnostic>(advance);
-	}
-
-	ExpressionResult literal = parse_literal();
-
-	if (std::get_if<Diagnostic>(&literal)) {
-	    return std::get<Diagnostic>(literal);
-	}
-
+	audhandle(advance);
+	auto literal = parse_postfix();
+	audhandle(literal);
 	std::get<Expression>(literal).op = op;
 	return literal;
     }
 
-    return parse_literal();
+    return parse_postfix();
+}
+
+ExpressionResult Parser::parse_postfix(void) {
+    auto literal = parse_literal();
+    audhandle(literal);
+    audhandle(current);
+
+    if (std::get<Token>(current).kind == LeftParenthesis) {
+	return parse_function_call(literal);
+    }
+
+    return literal;
 }
 
 ExpressionResult Parser::parse_literal(void) {
@@ -737,11 +601,7 @@ ExpressionResult Parser::parse_literal(void) {
     switch (std::get<Token>(current).kind) {
 	case Integer:
 	    exception = eat({Integer});
-
-	    if (std::get_if<Diagnostic>(&exception)) {
-		return std::get<Diagnostic>(exception);
-	    }
-
+	    audhandle(exception);
 	    return Expression(
 		Literal(
 		    LiteralKind::Integer,
@@ -751,11 +611,7 @@ ExpressionResult Parser::parse_literal(void) {
 
 	case Float:
 	    exception = eat({Float});
-
-	    if (std::get_if<Diagnostic>(&exception)) {
-		return std::get<Diagnostic>(exception);
-	    }
-
+	    audhandle(exception);
 	    return Expression(
 		Literal(
 		    LiteralKind::Float,
@@ -765,11 +621,7 @@ ExpressionResult Parser::parse_literal(void) {
 
 	case Char:
 	    exception = eat({Char});
-
-	    if (std::get_if<Diagnostic>(&exception)) {
-		return std::get<Diagnostic>(exception);
-	    }
-
+	    audhandle(exception);
 	    return Expression(
 		Literal(
 		    LiteralKind::Char,
@@ -779,11 +631,7 @@ ExpressionResult Parser::parse_literal(void) {
 
 	case String:
 	    exception = eat({String});
-
-	    if (std::get_if<Diagnostic>(&exception)) {
-		return std::get<Diagnostic>(exception);
-	    }
-
+	    audhandle(exception);
 	    return Expression(
 		Literal(
 		    LiteralKind::String,
@@ -793,11 +641,7 @@ ExpressionResult Parser::parse_literal(void) {
 
 	case Identifier:
 	    exception = eat({Identifier});
-
-	    if (std::get_if<Diagnostic>(&exception)) {
-		return std::get<Diagnostic>(exception);
-	    }
-
+	    audhandle(exception);
 	    return Expression(
 		Literal(
 		    LiteralKind::Name,
@@ -807,11 +651,7 @@ ExpressionResult Parser::parse_literal(void) {
 
 	case Boolean:
 	    exception = eat({Boolean});
-
-	    if (std::get_if<Diagnostic>(&exception)) {
-		return std::get<Diagnostic>(exception);
-	    }
-
+	    audhandle(exception);
 	    return Expression(
 		Literal(
 		    LiteralKind::String,
@@ -821,18 +661,10 @@ ExpressionResult Parser::parse_literal(void) {
 
 	case LeftParenthesis: {
 	    exception = eat({LeftParenthesis});
-
-	    if (std::get_if<Diagnostic>(&exception)) {
-		return std::get<Diagnostic>(exception);
-	    }
-
-	    ExpressionResult expression = parse_assignment();
+	    audhandle(exception);
+	    ExpressionResult expression = parse_list();
 	    exception = eat({RightParenthesis});
-
-	    if (std::get_if<Diagnostic>(&exception)) {
-		return std::get<Diagnostic>(exception);
-	    }
-
+	    audhandle(exception);
 	    return expression;
 	}
 
@@ -845,6 +677,37 @@ ExpressionResult Parser::parse_literal(void) {
     }
 }
 
+ExpressionResult Parser::parse_function_call(ExpressionResult literal) {
+    auto span = lexer.span;
+    auto advance = eat({LeftParenthesis});
+    auto _literal = std::get<Expression>(literal);
+
+    if (_literal.literal.kind != LiteralKind::Name) {
+	return Diagnostic(
+	    DiagnosticKind::SyntaxError,
+	    span,
+	    "not callable"
+	);
+    }
+
+    auto name = std::get<std::string>(_literal.literal.value);
+    Expression arguments;
+    
+    if (std::get_if<Token>(&current)->kind != RightParenthesis) {
+	auto _temp = parse_list();
+	audhandle(_temp);
+	arguments = std::get<Expression>(_temp);
+    }
+
+    advance = eat({RightParenthesis});
+    
+    if (std::get_if<Diagnostic>(&advance)) {
+	return std::get<Diagnostic>(advance);
+    }
+
+    return Literal(LiteralKind::Call, LiteralValue(Call(name, arguments)));
+}
+
 TokenResult Parser::eat(std::vector<TokenKind> kinds) {
     for (auto kind: kinds) {
 	if (std::get<Token>(current).kind == kind) {
@@ -854,7 +717,9 @@ TokenResult Parser::eat(std::vector<TokenKind> kinds) {
 	}
     }
 
-    std::string message = "unexpected token: " + std::get<Token>(current).kind_as_string() + "\n\texpected one of these tokens: ";
+    std::string message = "unexpected token: " +
+	std::get<Token>(current).kind_as_string() +
+	"\n\texpected one of these tokens: ";
 
     for (auto kind: kinds) {
 	message += Token(kind, lexer.span, std::string()).kind_as_string();
@@ -865,7 +730,7 @@ TokenResult Parser::eat(std::vector<TokenKind> kinds) {
     }
 
     message.push_back('\n');
-    Span span = lexer.span;
+    auto span = lexer.span;
 
     if (std::get_if<Token>(&current)->kind == EndOfFile) {
 	span.row--;

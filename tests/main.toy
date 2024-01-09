@@ -1,3 +1,6 @@
-func add(a: int) -> int {
-
+func print(text: string) -> void {
+    write(text);
+    write("\n");
 }
+
+print("Hello, world!");

@@ -20,4 +20,5 @@ class Expression {
     Expression(Expression, Token, Expression);
     Expression(Token, Literal);
     Expression(Literal);
+    Expression(void);
 };
